@@ -1,4 +1,3 @@
-# FXHistoricalVol 
 #read in data from csv file and convert to xts format
 newread.hdd = function(filename){
      #load packages
