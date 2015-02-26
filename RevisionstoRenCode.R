@@ -162,12 +162,7 @@ drawupanddown = function(filename, lookbackperiod, NofSimulation){
     #generate random permutation 
     ############### Good.
     index     = sample(nrow(rocforUse))
-    
-    ############### Here's where I simplified matters via indexing. What you wrote
-    ############### worked but added an extra step. More importantly, indexing is 
-    ############### one of the most powerful bits of functionality of using 
-    ############### arrays in R. You'll need to understand this for future work.
-    
+    #rearrange the vector according to the index given, ascendingly 
     tempret   = as.vector(rocforUse)[index]
     
     ############### This is more complicated than it needs to be right now but
@@ -178,11 +173,22 @@ drawupanddown = function(filename, lookbackperiod, NofSimulation){
     runups    = merge(runups, Runups(tempret))
     
     ############### Good.
-    #compute max drawdown and up
-    result[i+1,1] = min(drawdowns[,i])
-    result[i+1,2] = max(runups[,i])
+    #compute max drawdown and up 
+    
+    #Should the index on the RHS be i+1 or i?
+    result[i+1,1] = min(drawdowns[,i+1])
+    result[i+1,2] = max(runups[,i+1])
 
   }
+  
+  #Draw Histogram of the result
+  par(mfrow=c(2,1))
+  histdata = hist(result[,1], main="Histogram of Max Drawdown", xlab="Drawdowns")
+  abline(v = result[1,1], col="red", lty=2)
+  text(result[1,1], mean(histdata$counts), "Obs Drawdown", col = "red")
+  histdatarunup = hist(result[,2], main="Histogram of Max Runup", xlab="Runups")
+  abline(v = result[1,2], col = "red", lty=2)
+  text(result[1,2],mean(histdatarunup$counts), "Obs Runup", col = "red")
   
   return (result)
 }
@@ -198,6 +204,7 @@ Runups = function(returns, geometric=TRUE){
      ############### is currently a bit sloppy when using a vector as input. I
      ############### will have you fix this. 
      
+     #convert vector to xts
      x = checkData(returns)
      columns = ncol(x)
      columnnames = colnames(x)
@@ -206,8 +213,11 @@ Runups = function(returns, geometric=TRUE){
      
      colRunup = function(x, geometric) {
         if (geometric) 
+            #if return is geometric, compute price level conpoundly
             Return.cumulative = cumprod(1 + x)
         else Return.cumulative = 1 + cumsum(x)
+        #vector[-1] cut out the first elt
+        #cummin return min value up to current index
         minCumulativeReturn = cummin(c(1, Return.cumulative))[-1]
         column.runup = Return.cumulative/minCumulativeReturn - 1
         return(column.runup)
@@ -217,7 +227,9 @@ Runups = function(returns, geometric=TRUE){
      ############### array of returns. We're not using it now but may in the
      ############### future. 
      
+     
      for (column in 1:columns) {
+        #ignore NA data?
         column.runup = PerformanceAnalytics:::na.skip(x[, column], FUN = colRunup, 
             geometric = geometric)
         if (column == 1) 
@@ -232,13 +244,56 @@ Runups = function(returns, geometric=TRUE){
     runup = reclass(runup, x)
     return(runup)
    
-    }  
+    }
+
+#analyze historical intraday Runup and Drawdown
+#lookbackperiod in unit of day
+#ifHistogram takes TRUE or FALSE for drawing histogram of the result or not
+#percentile takes integer to mark out certain percentile on the histogram
+inDayUpnDown = function(filename,lookbackperiod, ifHistogram, percentile){
+  require(xts)
+  
+  #extract out data from file as xts
+  dataset = newread.hdd(filename)
+  
+  roc = ROC(dataset$Close,n=1,type="discrete")
+  dataforUse = last(dataset,paste(lookbackperiod,"days"))
+  
+  #split intraday data according to date
+  intraDayList = split(dataforUse, f = "days")
+  
+  #create empty result matrix
+  result =  matrix(,nrow = length(intraDayList), ncol=2)
+  
+  for (i in 1:length(intraDayList)){
+    rocforUse = ROC(intraDayList[[i]]$Close,n=1,type="discrete")
+    tempret   = as.vector(rocforUse)
+    drawdowns = PerformanceAnalytics:::Drawdowns(tempret[2:length(tempret)])
+    runups    = Runups(tempret[2:length(tempret)])
+    result[i,1] = min(drawdowns)
+    result[i,2] = max(runups)
+  }
+  
+  if(ifHistogram){
+    par(mfrow=c(2,1))
+    histdata = hist(result[,1], main="Histogram of Max Drawdown", xlab="Drawdowns")
+    abline(v = quantile(result[,1],percentile/100), col="red", lty=2)
+    text(quantile(result[,1],percentile/100), mean(histdata$counts), paste0(percentile,"th Percentile"), col = "red")
+    histdatarunup = hist(result[,2], main="Histogram of Max Runup", xlab="Runups")
+    abline(v = quantile(result[,2],percentile/100), col = "red", lty=2)
+    text(quantile(result[,2],percentile/100),mean(histdatarunup$counts), paste0(percentile,"th Percentile"), col = "red")
+  }
+  
+  
+  
+  return (result)
+}
 
 ########## It's good practice to keep example usage separate to your source code files.
 ########## Further, this plot functionality should be built into the functions above.
 
 #ma = drawupanddown(filename="EURUSD_D1_Bid.csv",lookbackperiod="365D",NofSimulation=1000)
-
+result = inDayUpnDown("GBPUSD_m15_Bid.csv",50,TRUE, 95)
 #draw histogram of max drawup and drawdown
 
 ########## This makes two charts within the same graphical device. 
