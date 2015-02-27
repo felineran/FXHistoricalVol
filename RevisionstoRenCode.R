@@ -276,12 +276,18 @@ inDayUpnDown = function(filename,lookbackperiod, ifHistogram, percentile){
   
   if(ifHistogram){
     par(mfrow=c(2,1))
+    
     histdata = hist(result[,1], main="Histogram of Max Drawdown", xlab="Drawdowns")
     abline(v = quantile(result[,1],percentile/100), col="red", lty=2)
+    lab = round(as.numeric(quantile(result[,1],percentile/100)),digits=4)
     text(quantile(result[,1],percentile/100), mean(histdata$counts), paste0(percentile,"th Percentile"), col = "red")
+    axis(1,at = lab ,label = lab) #mark x intercept of abline
+    
     histdatarunup = hist(result[,2], main="Histogram of Max Runup", xlab="Runups")
     abline(v = quantile(result[,2],percentile/100), col = "red", lty=2)
     text(quantile(result[,2],percentile/100),mean(histdatarunup$counts), paste0(percentile,"th Percentile"), col = "red")
+    lab = round(as.numeric(quantile(result[,2],percentile/100)),digits=4)
+    axis(1,at = lab ,label = lab)
   }
   
   
