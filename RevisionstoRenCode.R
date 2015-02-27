@@ -256,7 +256,6 @@ inDayUpnDown = function(filename,lookbackperiod, ifHistogram, percentile){
   #extract out data from file as xts
   dataset = newread.hdd(filename)
   
-  roc = ROC(dataset$Close,n=1,type="discrete")
   dataforUse = last(dataset,paste(lookbackperiod,"days"))
   
   #split intraday data according to date
@@ -268,6 +267,7 @@ inDayUpnDown = function(filename,lookbackperiod, ifHistogram, percentile){
   for (i in 1:length(intraDayList)){
     rocforUse = ROC(intraDayList[[i]]$Close,n=1,type="discrete")
     tempret   = as.vector(rocforUse)
+    #start from the second row, as the first is NA
     drawdowns = PerformanceAnalytics:::Drawdowns(tempret[2:length(tempret)])
     runups    = Runups(tempret[2:length(tempret)])
     result[i,1] = min(drawdowns)
@@ -289,7 +289,6 @@ inDayUpnDown = function(filename,lookbackperiod, ifHistogram, percentile){
     lab = round(as.numeric(quantile(result[,2],percentile/100)),digits=4)
     axis(1,at = lab ,label = lab)
   }
-  
   
   
   return (result)
