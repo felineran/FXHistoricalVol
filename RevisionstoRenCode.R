@@ -250,7 +250,7 @@ Runups = function(returns, geometric=TRUE){
 #lookbackperiod in unit of day
 #ifHistogram takes TRUE or FALSE for drawing histogram of the result or not
 #percentile takes integer to mark out certain percentile on the histogram
-inDayUpnDown = function(filename,lookbackperiod, ifHistogram, percentile){
+intradayDeviations = function(filename,lookbackperiod, ifHistogram, percentile){
   require(xts)
   
   #extract out data from file as xts
@@ -266,10 +266,10 @@ inDayUpnDown = function(filename,lookbackperiod, ifHistogram, percentile){
   
   for (i in 1:length(intraDayList)){
     rocforUse = ROC(intraDayList[[i]]$Close,n=1,type="discrete")
-    tempret   = as.vector(rocforUse)
-    #start from the second row, as the first is NA
-    drawdowns = PerformanceAnalytics:::Drawdowns(tempret[2:length(tempret)])
-    runups    = Runups(tempret[2:length(tempret)])
+    
+    drawdowns = PerformanceAnalytics:::Drawdowns(na.omit(rocforUse))
+    runups    = Runups(na.omit(rocforUse))
+    
     result[i,1] = min(drawdowns)
     result[i,2] = max(runups)
   }
@@ -281,13 +281,14 @@ inDayUpnDown = function(filename,lookbackperiod, ifHistogram, percentile){
     abline(v = quantile(result[,1],percentile/100), col="red", lty=2)
     lab = round(as.numeric(quantile(result[,1],percentile/100)),digits=4)
     text(quantile(result[,1],percentile/100), mean(histdata$counts), paste0(percentile,"th Percentile"), col = "red")
-    axis(1,at = lab ,label = lab) #mark x intercept of abline
-    
+    #axis(1,at = lab ,label = lab) #mark x intercept of abline
+
     histdatarunup = hist(result[,2], main="Histogram of Max Runup", xlab="Runups")
-    abline(v = quantile(result[,2],percentile/100), col = "red", lty=2)
-    text(quantile(result[,2],percentile/100),mean(histdatarunup$counts), paste0(percentile,"th Percentile"), col = "red")
-    lab = round(as.numeric(quantile(result[,2],percentile/100)),digits=4)
-    axis(1,at = lab ,label = lab)
+    abline(v = quantile(result[,2],(100-percentile)/100), col = "red", lty=2)
+    text(quantile(result[,2],(100-percentile)/100),mean(histdatarunup$counts), paste0((100-percentile),"th Percentile"), col = "red")
+    lab = round(as.numeric(quantile(result[,2],(100-percentile)/100)),digits=4)
+    #axis(1,at = lab ,label = lab)
+    
   }
   
   
